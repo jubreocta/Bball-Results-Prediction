@@ -1,10 +1,6 @@
-import os
-import re
-import pandas as pd
+from UoW.Connectors import Wrangler
 
-rank_votings = dict()
-raw_folder = "raw"
-raw_directory_list = os.listdir(raw_folder)
-for file in raw_directory_list:    
-    data = pd.read_csv(f"{raw_folder}/{file}")
-    print(data.head())
+#For NBA br data: compile many seasons from raw folder into 1 csv
+#then put 1 file named Raw Data in Data folder
+W = Wrangler()
+W.write_csv_to_folder(W.many_seasons_to_1_file("raw"), "Data/Raw Data")
