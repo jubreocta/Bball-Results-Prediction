@@ -11,7 +11,7 @@ class Wrangler:
         return pd.read_csv(f"{rel_path}.csv")
 
     def write_csv_to_folder(self, file, rel_path):
-        file.to_csv(f"{rel_path}.csv")
+        file.to_csv(f"{rel_path}.csv", index = False)
 
     def replacement_dictionary(self):
         return {
@@ -38,6 +38,7 @@ class Wrangler:
         data["RightScore"] = pd.to_numeric(data["PTS"])
         data.reset_index(inplace = True, drop = True)
         data = data[[
+            "Season",
             "Date",
             "LeftTeam",
             "LeftScore",

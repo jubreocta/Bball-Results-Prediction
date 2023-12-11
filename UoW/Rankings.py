@@ -1,6 +1,9 @@
 import numpy as np
-import pandas as pd
 np.seterr(divide='ignore', invalid='ignore')
+import pandas as pd
+pd.set_option('expand_frame_repr', False)
+pd.set_option('display.max_rows', 500)
+pd.set_option('display.max_columns', 500)
 
 class Common():
     def __init__(self, df):
@@ -76,10 +79,15 @@ class WinPercentage():
 
 class OneSeason:
     def __init__(self, df):
-        self.rawdata = df
+        self.df = df
+        self.seasons = df.Season.unique()
+        self.final_df = []
     def do_seasonal_ranking(self):
-        percentage = WinPercentage(self.rawdata).rank()
-        print(percentage)
+        for season in self.seasons:
+            season_data = self.df[self.df.Season == season]
+            self.final_df.append(WinPercentage(season_data).rank())
+
+        return pd.concat(self.final_df, ignore_index=True)
         # colley = colley_for_a_season(data)
         # #print(colley)
         # massey = massey_for_a_season(data)
