@@ -45,6 +45,31 @@ class Common():
             array[team_ordering[dataset['RightTeam'][i]]] += dataset['RightScore'][i]
         return array
 
+    def points_given_up(self, dataset_of_interest, kind):
+        '''Creates a matrix containing the total number of points given up to each
+        team over the time span of the supplied dataset. The kinds represent the
+        different forms of voting described in the textbook.'''
+        team_ordering = self.team_order()
+        matrix = np.array([[0] * self.n] * self.n)
+        for i in range(len(dataset_of_interest)):
+            #add value of point conceeded to array
+            left_index = team_ordering[dataset_of_interest['LeftTeam'][i]]
+            right_index = team_ordering[dataset_of_interest['RightTeam'][i]]
+            if kind == 3:
+                matrix[left_index, right_index] += dataset_of_interest['RightScore'][i]
+                matrix[right_index, left_index] += dataset_of_interest['LeftScore'][i]
+            elif kind == 2:
+                if dataset_of_interest['LeftScore'][i] < dataset_of_interest['RightScore'][i]:
+                    matrix[left_index, right_index] += dataset_of_interest['RightScore'][i] - dataset_of_interest['LeftScore'][i]
+                else:
+                    matrix[right_index, left_index] += dataset_of_interest['LeftScore'][i] - dataset_of_interest['RightScore'][i]
+            elif kind == 1:
+                if dataset_of_interest['LeftScore'][i] < dataset_of_interest['RightScore'][i]:
+                    matrix[left_index, right_index] += 1
+                else:
+                    matrix[right_index, left_index] += 1
+        return matrix
+
     def subtract_losses_from_wins(self, dataset):
         """Creates a vector containing the total number of losses subtracted from
         the total number of wins for each team over the time span of the supplied
@@ -200,7 +225,59 @@ class Massey():
         self.df = self.df.assign(Left_M = self.left_rating)
         self.df = self.df.assign(Right_M = self.right_rating)
         return self.df
-    
+
+class OffensiveDefensive():
+    def __init__(self, df):
+        self.df = df
+        self.common_functions = Common(df)
+        self.team_ordering = self.common_functions.team_order()
+        self.n = len(self.team_ordering)
+        self.left_offensive_rating    = []
+        self.left_defensive_rating    = []
+        self.left_rating              = []
+        self.right_offensive_rating   = []
+        self.right_defensive_rating   = []
+        self.right_rating             = []
+        self.unique_dates = df.Date.unique()
+
+    def rank(self):
+        for date_index in range(len(self.unique_dates)):
+            data_used_for_ranking = self.df[self.df.Date == self.unique_dates[date_index - 1]].reset_index(drop = True)
+            data_to_be_ranked = self.df[self.df.Date == self.unique_dates[date_index]].reset_index(drop = True)
+            if date_index == 0:    
+                voting_matrix = np.array([[0] * self.n] * self.n)
+                
+            else:
+                voting_matrix += self.common_functions.points_given_up(data_used_for_ranking, 3)
+            #Offensive Defensive rating calculations start here
+            A = voting_matrix
+            d = np.array([1.0] * self.n).reshape(self.n, 1)
+            old_d = np.array([0.9] * self.n).reshape(self.n, 1)
+            k = 1
+            while k < 10 and np.allclose(old_d,d) is False: #k used to be less than 1000 but this produces rankings that are too high. extreme outlier
+                old_d = d
+                o = np.transpose(A).dot(np.reciprocal(old_d))
+                d = A.dot(np.reciprocal(o))
+                k += 1
+            d, o, r = d, o, o/d
+            #Placing ranks of teams in the dataset
+            for game_index in range(len(data_to_be_ranked)):
+                left_index = self.team_ordering[data_to_be_ranked['LeftTeam'][game_index]]
+                self.left_rating.append(r[left_index][0])
+                self.left_offensive_rating.append(o[left_index][0])
+                self.left_defensive_rating.append(d[left_index][0])
+                right_index = self.team_ordering[data_to_be_ranked['RightTeam'][game_index]]
+                self.right_rating.append(r[right_index][0])
+                self.right_offensive_rating.append(o[right_index][0])
+                self.right_defensive_rating.append(d[right_index][0])
+        self.df = self.df.assign(Left_ODO  = self.left_offensive_rating)
+        self.df = self.df.assign(Right_ODO = self.right_offensive_rating)
+        self.df = self.df.assign(Left_ODD = self.left_defensive_rating)
+        self.df = self.df.assign(Right_ODD = self.right_defensive_rating)
+        self.df = self.df.assign(Left_OD = self.left_rating)
+        self.df = self.df.assign(Right_OD = self.right_rating)
+        return self.df
+
 class WinPercentage():
     def __init__(self, df):
         self.df = df
@@ -248,8 +325,10 @@ class OneSeason:
             season_data = self.df[self.df.Season == season]
             self.final_df.append(
                 WinPercentage(
-                    Massey(
-                        Colley(season_data).rank()
+                    OffensiveDefensive(
+                        Massey(
+                            Colley(season_data).rank()
+                        ).rank()
                     ).rank()
                 ).rank()
             )
