@@ -166,7 +166,7 @@ class Colley():
         self.df = self.df.assign(Right_C = self.right_rating)
         return self.df
 
-class Markov_1_Instance():
+class Markov():
     def __init__(self, df):
         self.df = df
         self.common_functions = Common(df)
@@ -209,17 +209,6 @@ class Markov_1_Instance():
         self.df[f"Left_MV{kind}"]  = self.left_rating
         self.df[f"Right_MV{kind}"] =  self.right_rating
         return self.df
-
-class Markov():
-    def __init__(self, df):
-        self.df = df
-
-    def rank(self, beta):
-        return Markov_1_Instance(
-                    Markov_1_Instance(
-                        Markov_1_Instance(self.df).rank(beta, 1)
-                    ).rank(beta, 2)
-                ).rank(beta, 3)
         
 class Massey():
     def __init__(self, df):
@@ -384,8 +373,12 @@ class OneSeason:
                     OffensiveDefensive(
                         Massey(
                             Markov(
-                                Colley(season_data).rank()
-                            ).rank(0.6)
+                                Markov(
+                                    Markov(
+                                        Colley(season_data).rank()
+                                    ).rank(0.6, 1)
+                                ).rank(0.6, 2)
+                            ).rank(0.6, 3)
                         ).rank()
                     ).rank()
                 ).rank()
