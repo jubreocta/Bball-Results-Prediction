@@ -5,15 +5,23 @@ pd.set_option("expand_frame_repr", False)
 pd.set_option("display.max_rows", 500)
 pd.set_option("display.max_columns", 500)
 
-class Common():
+
+class Ranking():
     def __init__(self, df):
         self.df = df
         self.n = len(set(self.df["LeftTeam"]).union(set(self.df["RightTeam"])))
+        self.left_rating            = []
+        self.left_offensive_rating  = []
+        self.left_defensive_rating  = []
+        self.right_rating           = []
+        self.right_offensive_rating = []
+        self.right_defensive_rating = []
+        self.unique_dates = df.Date.unique()
     
     def pairwise_matchups(self, dataset):
         """Creates an off-diagonal matrix containing the number of pairwise
         matchups between teams over the time span of the supplied dataset"""
-        team_ordering = self.team_order()
+        team_ordering = self.team_ordering()
         array = np.array([[0] * self.n] * self.n)
         for i in range(len(dataset)):
             #add 1 for each game between distinct oponents
@@ -24,50 +32,50 @@ class Common():
         return array
             
     def points_against(self, dataset):
-        '''Creates a vector containing the total number of points conceded by each
-        team over the time span of the supplied dataset'''
-        team_ordering = self.team_order()
+        """Creates a vector containing the total number of points conceded by each
+        team over the time span of the supplied dataset"""
+        team_ordering = self.team_ordering()
         array = np.array([0] * self.n)
         for i in range(len(dataset)):
             #add value of point conceeded to array
-            array[team_ordering[dataset['LeftTeam'][i]]] += dataset['RightScore'][i]
-            array[team_ordering[dataset['RightTeam'][i]]] += dataset['LeftScore'][i]
+            array[team_ordering[dataset["LeftTeam"][i]]] += dataset["RightScore"][i]
+            array[team_ordering[dataset["RightTeam"][i]]] += dataset["LeftScore"][i]
         return array
         
     def points_for(self, dataset, ):
-        '''Creates a vector containing the total number of points scored by each
-        team over the time span of the supplied dataset.'''
-        team_ordering = self.team_order()
+        """Creates a vector containing the total number of points scored by each
+        team over the time span of the supplied dataset."""
+        team_ordering = self.team_ordering()
         array = np.array([0] * self.n)
         for i in range(len(dataset)):
             #add value of point scored to array
-            array[team_ordering[dataset['LeftTeam'][i]]] += dataset['LeftScore'][i]
-            array[team_ordering[dataset['RightTeam'][i]]] += dataset['RightScore'][i]
+            array[team_ordering[dataset["LeftTeam"][i]]] += dataset["LeftScore"][i]
+            array[team_ordering[dataset["RightTeam"][i]]] += dataset["RightScore"][i]
         return array
 
     def points_given_up(self, dataset_of_interest, kind):
-        '''Creates a matrix containing the total number of points given up to each
+        """Creates a matrix containing the total number of points given up to each
         team over the time span of the supplied dataset. The kinds represent the
         different forms of voting described in the textbook.
         1 -- loser votes only one point for winner
         2 -- loser votes point differential
-        3 -- both winner and looser vote points given up'''
-        team_ordering = self.team_order()
+        3 -- both winner and looser vote points given up"""
+        team_ordering = self.team_ordering()
         matrix = np.array([[0] * self.n] * self.n)
         for i in range(len(dataset_of_interest)):
             #add value of point conceeded to array
-            left_index = team_ordering[dataset_of_interest['LeftTeam'][i]]
-            right_index = team_ordering[dataset_of_interest['RightTeam'][i]]
+            left_index = team_ordering[dataset_of_interest["LeftTeam"][i]]
+            right_index = team_ordering[dataset_of_interest["RightTeam"][i]]
             if kind == 3:
-                matrix[left_index, right_index] += dataset_of_interest['RightScore'][i]
-                matrix[right_index, left_index] += dataset_of_interest['LeftScore'][i]
+                matrix[left_index, right_index] += dataset_of_interest["RightScore"][i]
+                matrix[right_index, left_index] += dataset_of_interest["LeftScore"][i]
             elif kind == 2:
-                if dataset_of_interest['LeftScore'][i] < dataset_of_interest['RightScore'][i]:
-                    matrix[left_index, right_index] += dataset_of_interest['RightScore'][i] - dataset_of_interest['LeftScore'][i]
+                if dataset_of_interest["LeftScore"][i] < dataset_of_interest["RightScore"][i]:
+                    matrix[left_index, right_index] += dataset_of_interest["RightScore"][i] - dataset_of_interest["LeftScore"][i]
                 else:
-                    matrix[right_index, left_index] += dataset_of_interest['LeftScore'][i] - dataset_of_interest['RightScore'][i]
+                    matrix[right_index, left_index] += dataset_of_interest["LeftScore"][i] - dataset_of_interest["RightScore"][i]
             elif kind == 1:
-                if dataset_of_interest['LeftScore'][i] < dataset_of_interest['RightScore'][i]:
+                if dataset_of_interest["LeftScore"][i] < dataset_of_interest["RightScore"][i]:
                     matrix[left_index, right_index] += 1
                 else:
                     matrix[right_index, left_index] += 1
@@ -77,7 +85,7 @@ class Common():
         """Creates a vector containing the total number of losses subtracted from
         the total number of wins for each team over the time span of the supplied
         dataset"""
-        team_ordering = self.team_order()
+        team_ordering = self.team_ordering()
         array = np.array([0] * self.n)
         for i in range(len(dataset)):
             left_index = team_ordering[dataset["LeftTeam"][i]]
@@ -91,14 +99,14 @@ class Common():
                 array[right_index] += 1     
         return array
 
-    def team_order(self):
+    def team_ordering(self):
         teams = sorted(set(self.df["LeftTeam"]).union(set(self.df["RightTeam"])))
         return {key: value for value,key in enumerate(teams)}    
     
     def total_no_played(self, dataset):
         """Creates a diagonal matrix containing the total number of games played
         by each team over the time span of the supplied dataset"""
-        team_ordering = self.team_order()
+        team_ordering = self.team_ordering()
         array = np.array([[0] * self.n] * self.n)
         for i in range(len(dataset)):
             #add 1 for each game played
@@ -111,7 +119,7 @@ class Common():
     def total_no_won(self, dataset):
         """Creates a diagonal matrix containing the total number of games won
         by each team over the time span of the supplied dataset"""
-        team_ordering = self.team_order()
+        team_ordering = self.team_ordering()
         array = np.array([[0] * self.n] * self.n)
         for i in range(len(dataset)):
             #add 1 for each game won
@@ -122,17 +130,8 @@ class Common():
                 right_index = team_ordering[dataset["RightTeam"][i]]
                 array[right_index, right_index] += 1
         return array
-    
-class Colley():
-    def __init__(self, df):
-        self.df = df
-        self.common_functions = Common(df)
-        self.team_ordering = self.common_functions.team_order()
-        self.n = len(self.team_ordering)
-        self.left_rating    = []
-        self.right_rating   = []
-        self.unique_dates = df.Date.unique()
-   
+
+class Colley(Ranking):
     def rank(self):
         for date_index in range(len(self.unique_dates)):
             data_used_for_ranking = self.df[self.df.Date == self.unique_dates[date_index - 1]].reset_index(drop = True)
@@ -143,9 +142,9 @@ class Colley():
                 total_no_played_array = np.array([[0] * self.n] * self.n)
                 np.fill_diagonal(total_no_played_array, 2)
             else:
-                total_no_played_array   += self.common_functions.total_no_played(data_used_for_ranking)
-                pairwise_matchups_array -= self.common_functions.pairwise_matchups(data_used_for_ranking)
-                subtract_losses_from_wins_array += self.common_functions.subtract_losses_from_wins(data_used_for_ranking)
+                total_no_played_array   += self.total_no_played(data_used_for_ranking)
+                pairwise_matchups_array -= self.pairwise_matchups(data_used_for_ranking)
+                subtract_losses_from_wins_array += self.subtract_losses_from_wins(data_used_for_ranking)
             #Colley rating calculations start here
             T = total_no_played_array
             P = pairwise_matchups_array
@@ -158,24 +157,15 @@ class Colley():
                 r = ([None] * self.n)
             #Placing ranks of teams in the dataset)
             for game_index in range(len(data_to_be_ranked)):
-                left_index = self.team_ordering[data_to_be_ranked["LeftTeam"][game_index]]
+                left_index = self.team_ordering()[data_to_be_ranked["LeftTeam"][game_index]]
                 self.left_rating.append(r[left_index])
-                right_index = self.team_ordering[data_to_be_ranked["RightTeam"][game_index]]
+                right_index = self.team_ordering()[data_to_be_ranked["RightTeam"][game_index]]
                 self.right_rating.append(r[right_index])
         self.df = self.df.assign(Left_C = self.left_rating)
         self.df = self.df.assign(Right_C = self.right_rating)
         return self.df
 
-class Markov():
-    def __init__(self, df):
-        self.df = df
-        self.common_functions = Common(df)
-        self.team_ordering = self.common_functions.team_order()
-        self.n = len(self.team_ordering)
-        self.left_rating    = []
-        self.right_rating   = []
-        self.unique_dates = df.Date.unique()
-   
+class Markov(Ranking):
     def rank(self, beta, kind):
         for date_index in range(len(self.unique_dates)):
             data_used_for_ranking = self.df[self.df.Date == self.unique_dates[date_index - 1]].reset_index(drop = True)
@@ -183,7 +173,7 @@ class Markov():
             if date_index == 0:
                 voting_matrix = np.array([[0] * self.n] * self.n)  
             else:
-                voting_matrix += self.common_functions.points_given_up(data_used_for_ranking, kind)
+                voting_matrix += self.points_given_up(data_used_for_ranking, kind)
             #create stocastic matrix
             #line below uses equal voting to other teams by team that has not lost
             #for loop uses vote to self there reorganises the matrix.
@@ -202,28 +192,15 @@ class Markov():
                 r = ([None] * self.n)
             #Placing ranks of teams in the dataset)
             for game_index in range(len(data_to_be_ranked)):
-                left_index = self.team_ordering[data_to_be_ranked['LeftTeam'][game_index]]
+                left_index = self.team_ordering()[data_to_be_ranked["LeftTeam"][game_index]]
                 self.left_rating.append(r[left_index])
-                right_index = self.team_ordering[data_to_be_ranked['RightTeam'][game_index]]
+                right_index = self.team_ordering()[data_to_be_ranked["RightTeam"][game_index]]
                 self.right_rating.append(r[right_index])
         self.df[f"Left_MV{kind}"]  = self.left_rating
         self.df[f"Right_MV{kind}"] =  self.right_rating
         return self.df
         
-class Massey():
-    def __init__(self, df):
-        self.df = df
-        self.common_functions = Common(df)
-        self.team_ordering = self.common_functions.team_order()
-        self.n = len(self.team_ordering)
-        self.left_offensive_rating    = []
-        self.left_defensive_rating    = []
-        self.left_rating              = []
-        self.right_offensive_rating   = []
-        self.right_defensive_rating   = []
-        self.right_rating             = []
-        self.unique_dates = df.Date.unique()
-   
+class Massey(Ranking):
     def rank(self):
         for date_index in range(len(self.unique_dates)):
             data_used_for_ranking = self.df[self.df.Date == self.unique_dates[date_index - 1]].reset_index(drop = True)
@@ -234,10 +211,10 @@ class Massey():
                 pairwise_matchups_array = np.array([[0] * self.n] * self.n)
                 total_no_played_array = np.array([[0] * self.n] * self.n)
             else:
-                total_no_played_array   += self.common_functions.total_no_played(data_used_for_ranking)
-                pairwise_matchups_array += self.common_functions.pairwise_matchups(data_used_for_ranking)
-                points_for_array        += self.common_functions.points_for(data_used_for_ranking)
-                points_against_array    += self.common_functions.points_against(data_used_for_ranking)
+                total_no_played_array   += self.total_no_played(data_used_for_ranking)
+                pairwise_matchups_array += self.pairwise_matchups(data_used_for_ranking)
+                points_for_array        += self.points_for(data_used_for_ranking)
+                points_against_array    += self.points_against(data_used_for_ranking)
             #Massy rating calculations start here
             T = total_no_played_array
             P = pairwise_matchups_array
@@ -256,11 +233,11 @@ class Massey():
                 d, o, r = ([[None] * self.n] * 3)
             #Placing ranks of teams in the dataset
             for game_index in range(len(data_to_be_ranked)):
-                left_index = self.team_ordering[data_to_be_ranked['LeftTeam'][game_index]]
+                left_index = self.team_ordering()[data_to_be_ranked["LeftTeam"][game_index]]
                 self.left_rating.append(r[left_index])
                 self.left_offensive_rating.append(o[left_index])
                 self.left_defensive_rating.append(d[left_index])
-                right_index = self.team_ordering[data_to_be_ranked['RightTeam'][game_index]]
+                right_index = self.team_ordering()[data_to_be_ranked["RightTeam"][game_index]]
                 self.right_rating.append(r[right_index])
                 self.right_offensive_rating.append(o[right_index])
                 self.right_defensive_rating.append(d[right_index])
@@ -272,20 +249,7 @@ class Massey():
         self.df = self.df.assign(Right_M = self.right_rating)
         return self.df
 
-class OffensiveDefensive():
-    def __init__(self, df):
-        self.df = df
-        self.common_functions = Common(df)
-        self.team_ordering = self.common_functions.team_order()
-        self.n = len(self.team_ordering)
-        self.left_offensive_rating    = []
-        self.left_defensive_rating    = []
-        self.left_rating              = []
-        self.right_offensive_rating   = []
-        self.right_defensive_rating   = []
-        self.right_rating             = []
-        self.unique_dates = df.Date.unique()
-
+class OffensiveDefensive(Ranking):
     def rank(self):
         for date_index in range(len(self.unique_dates)):
             data_used_for_ranking = self.df[self.df.Date == self.unique_dates[date_index - 1]].reset_index(drop = True)
@@ -293,7 +257,7 @@ class OffensiveDefensive():
             if date_index == 0:    
                 voting_matrix = np.array([[0] * self.n] * self.n)
             else:
-                voting_matrix += self.common_functions.points_given_up(data_used_for_ranking, 3)
+                voting_matrix += self.points_given_up(data_used_for_ranking, 3)
             #Offensive Defensive rating calculations start here
             A = voting_matrix
             d = np.array([1.0] * self.n).reshape(self.n, 1)
@@ -307,32 +271,23 @@ class OffensiveDefensive():
             d, o, r = d, o, o/d
             #Placing ranks of teams in the dataset
             for game_index in range(len(data_to_be_ranked)):
-                left_index = self.team_ordering[data_to_be_ranked['LeftTeam'][game_index]]
+                left_index = self.team_ordering()[data_to_be_ranked["LeftTeam"][game_index]]
                 self.left_rating.append(r[left_index][0])
                 self.left_offensive_rating.append(o[left_index][0])
                 self.left_defensive_rating.append(d[left_index][0])
-                right_index = self.team_ordering[data_to_be_ranked['RightTeam'][game_index]]
+                right_index = self.team_ordering()[data_to_be_ranked["RightTeam"][game_index]]
                 self.right_rating.append(r[right_index][0])
                 self.right_offensive_rating.append(o[right_index][0])
                 self.right_defensive_rating.append(d[right_index][0])
         self.df = self.df.assign(Left_ODO  = self.left_offensive_rating)
         self.df = self.df.assign(Right_ODO = self.right_offensive_rating)
-        self.df = self.df.assign(Left_ODD = self.left_defensive_rating)
+        self.df = self.df.assign(Left_ODD  = self.left_defensive_rating)
         self.df = self.df.assign(Right_ODD = self.right_defensive_rating)
-        self.df = self.df.assign(Left_OD = self.left_rating)
-        self.df = self.df.assign(Right_OD = self.right_rating)
+        self.df = self.df.assign(Left_OD   = self.left_rating)
+        self.df = self.df.assign(Right_OD  = self.right_rating)
         return self.df
 
-class WinPercentage():
-    def __init__(self, df):
-        self.df = df
-        self.common_functions = Common(df)
-        self.team_ordering = self.common_functions.team_order()
-        self.n = len(self.team_ordering)
-        self.left_rating    = []
-        self.right_rating   = []
-        self.unique_dates = df.Date.unique()
-
+class WinPercentage(Ranking):
     def rank(self):
         for date_index in range(len(self.unique_dates)):
             data_used_for_ranking = self.df[self.df.Date == self.unique_dates[date_index - 1]].reset_index(drop = True)
@@ -341,8 +296,8 @@ class WinPercentage():
                 total_no_won_array = np.array([[0] * self.n] * self.n)
                 total_no_played_array = np.array([[0] * self.n] * self.n)
             else:
-                total_no_won_array   += self.common_functions.total_no_won(data_used_for_ranking)
-                total_no_played_array   += self.common_functions.total_no_played(data_used_for_ranking)            
+                total_no_won_array   += self.total_no_won(data_used_for_ranking)
+                total_no_played_array   += self.total_no_played(data_used_for_ranking)            
             r = []
             for i in range(len(total_no_played_array.diagonal())):
                 if total_no_played_array.diagonal()[i] == 0:
@@ -351,9 +306,9 @@ class WinPercentage():
                     r.append(total_no_won_array.diagonal()[i] / total_no_played_array.diagonal()[i])
             r = np.array(r)    
             for game_index in range(len(data_to_be_ranked)):
-                left_index = self.common_functions.team_order()[data_to_be_ranked["LeftTeam"][game_index]]
+                left_index = self.team_ordering()[data_to_be_ranked["LeftTeam"][game_index]]
                 self.left_rating.append(r[left_index])
-                right_index = self.common_functions.team_order()[data_to_be_ranked["RightTeam"][game_index]]
+                right_index = self.team_ordering()[data_to_be_ranked["RightTeam"][game_index]]
                 self.right_rating.append(r[right_index])
         self.df = self.df.assign(Left_WP = self.left_rating)
         self.df = self.df.assign(Right_WP = self.right_rating)
