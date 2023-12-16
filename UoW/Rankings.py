@@ -48,7 +48,10 @@ class Common():
     def points_given_up(self, dataset_of_interest, kind):
         '''Creates a matrix containing the total number of points given up to each
         team over the time span of the supplied dataset. The kinds represent the
-        different forms of voting described in the textbook.'''
+        different forms of voting described in the textbook.
+        1 -- loser votes only one point for winner
+        2 -- loser votes point differential
+        3 -- both winner and looser vote points given up'''
         team_ordering = self.team_order()
         matrix = np.array([[0] * self.n] * self.n)
         for i in range(len(dataset_of_interest)):
@@ -163,7 +166,61 @@ class Colley():
         self.df = self.df.assign(Right_C = self.right_rating)
         return self.df
 
+class Markov_1_Instance():
+    def __init__(self, df):
+        self.df = df
+        self.common_functions = Common(df)
+        self.team_ordering = self.common_functions.team_order()
+        self.n = len(self.team_ordering)
+        self.left_rating    = []
+        self.right_rating   = []
+        self.unique_dates = df.Date.unique()
+   
+    def rank(self, beta, kind):
+        for date_index in range(len(self.unique_dates)):
+            data_used_for_ranking = self.df[self.df.Date == self.unique_dates[date_index - 1]].reset_index(drop = True)
+            data_to_be_ranked = self.df[self.df.Date == self.unique_dates[date_index]].reset_index(drop = True)
+            if date_index == 0:
+                voting_matrix = np.array([[0] * self.n] * self.n)  
+            else:
+                voting_matrix += self.common_functions.points_given_up(data_used_for_ranking, kind)
+            #create stocastic matrix
+            #line below uses equal voting to other teams by team that has not lost
+            #for loop uses vote to self there reorganises the matrix.
+            S = np.nan_to_num(voting_matrix/voting_matrix.sum(axis=1, keepdims=True), nan=1 / self.n)
+            for i in range(len(S)):
+                if (S[i] == np.array([1 / self.n] * self.n)).all():
+                    S[i] = np.array([0] * self.n)
+                    S[i][i] = 1
+            #calculate the stationary vector
+            S = beta * S + (1 - beta) / self.n * np.array([[1] * self.n] * self.n)
+            A = np.append(np.transpose(S) - np.identity(self.n), [[1] * self.n], axis=0)
+            b = np.transpose(np.append(np.array([0] * self.n), 1))
+            try:
+                r = np.linalg.solve(np.transpose(A).dot(A), np.transpose(A).dot(b))
+            except np.linalg.LinAlgError:
+                r = ([None] * self.n)
+            #Placing ranks of teams in the dataset)
+            for game_index in range(len(data_to_be_ranked)):
+                left_index = self.team_ordering[data_to_be_ranked['LeftTeam'][game_index]]
+                self.left_rating.append(r[left_index])
+                right_index = self.team_ordering[data_to_be_ranked['RightTeam'][game_index]]
+                self.right_rating.append(r[right_index])
+        self.df[f"Left_MV{kind}"]  = self.left_rating
+        self.df[f"Right_MV{kind}"] =  self.right_rating
+        return self.df
 
+class Markov():
+    def __init__(self, df):
+        self.df = df
+
+    def rank(self, beta):
+        return Markov_1_Instance(
+                    Markov_1_Instance(
+                        Markov_1_Instance(self.df).rank(beta, 1)
+                    ).rank(beta, 2)
+                ).rank(beta, 3)
+        
 class Massey():
     def __init__(self, df):
         self.df = df
@@ -246,7 +303,6 @@ class OffensiveDefensive():
             data_to_be_ranked = self.df[self.df.Date == self.unique_dates[date_index]].reset_index(drop = True)
             if date_index == 0:    
                 voting_matrix = np.array([[0] * self.n] * self.n)
-                
             else:
                 voting_matrix += self.common_functions.points_given_up(data_used_for_ranking, 3)
             #Offensive Defensive rating calculations start here
@@ -327,20 +383,11 @@ class OneSeason:
                 WinPercentage(
                     OffensiveDefensive(
                         Massey(
-                            Colley(season_data).rank()
+                            Markov(
+                                Colley(season_data).rank()
+                            ).rank(0.6)
                         ).rank()
                     ).rank()
                 ).rank()
             )
         return pd.concat(self.final_df, ignore_index=True)
-
-
-        # od = od_for_a_season(data)
-        # #print(od)
-        # markov1 = markov_for_a_season(data,1)
-        # #print(markov1)
-        # markov2 = markov_for_a_season(data,2)
-        # #print(markov2)
-        # markov3 = markov_for_a_season(data,3)
-        # #print(markov3)
-    #return markov3
