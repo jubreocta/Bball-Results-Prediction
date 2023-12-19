@@ -314,13 +314,13 @@ class WinPercentage(Ranking):
         self.df = self.df.assign(Right_WP = self.right_rating)
         return self.df
 
-class OneSeason:
+class SeasonRanks:
     def __init__(self, df):
         self.df = df
         self.seasons = df.Season.unique()
         self.final_df = []
 
-    def do_seasonal_ranking(self):
+    def do_1_seasonal_ranking(self):
         for season in self.seasons:
             season_data = self.df[self.df.Season == season]
             self.final_df.append(
@@ -339,3 +339,29 @@ class OneSeason:
                 ).rank()
             )
         return pd.concat(self.final_df, ignore_index=True)
+    
+    def do_2_seasonal_ranking(self):
+        self.df["Year"] = self.df.Season.str[:4].astype(int)
+        for year in self.df.Year.unique():
+            previous_year = year - 1
+            season_data = self.df[self.df.Year.isin([year])]
+            two_season_data = self.df[self.df.Year.isin([previous_year, year])]
+            self.final_df.append(
+                WinPercentage(
+                    OffensiveDefensive(
+                        Massey(
+                            Markov(
+                                Markov(
+                                    Markov(
+                                        Colley(two_season_data).rank()
+                                    ).rank(0.6, 1)
+                                ).rank(0.6, 2)
+                            ).rank(0.6, 3)
+                        ).rank()
+                    ).rank()
+                ).rank()
+            )
+        return pd.concat(self.final_df, ignore_index=True).tail(len(season_data))
+    
+    #def do_seasonal_ranking(self):
+
