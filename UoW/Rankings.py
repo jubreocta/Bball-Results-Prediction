@@ -1,9 +1,9 @@
 import numpy as np
 np.seterr(divide="ignore", invalid="ignore")
 import pandas as pd
-pd.set_option("expand_frame_repr", False)
-pd.set_option("display.max_rows", 500)
-pd.set_option("display.max_columns", 500)
+#pd.set_option("expand_frame_repr", False)
+#pd.set_option("display.max_rows", 500)
+#pd.set_option("display.max_columns", 500)
 
 
 class Ranking():
@@ -134,8 +134,8 @@ class Ranking():
 class Colley(Ranking):
     def rank(self):
         for date_index in range(len(self.unique_dates)):
-            data_used_for_ranking = self.df[self.df.Date == self.unique_dates[date_index - 1]].reset_index(drop = True)
-            data_to_be_ranked = self.df[self.df.Date == self.unique_dates[date_index]].reset_index(drop = True)
+            data_used_for_ranking = self.df[self.df.Date == self.unique_dates[date_index - 1]].reset_index(drop=True)
+            data_to_be_ranked = self.df[self.df.Date == self.unique_dates[date_index]].reset_index(drop=True)
             if date_index == 0:
                 subtract_losses_from_wins_array = np.array([0] * self.n)
                 pairwise_matchups_array = np.array([[0] * self.n] * self.n)
@@ -168,8 +168,8 @@ class Colley(Ranking):
 class Markov(Ranking):
     def rank(self, beta, kind):
         for date_index in range(len(self.unique_dates)):
-            data_used_for_ranking = self.df[self.df.Date == self.unique_dates[date_index - 1]].reset_index(drop = True)
-            data_to_be_ranked = self.df[self.df.Date == self.unique_dates[date_index]].reset_index(drop = True)
+            data_used_for_ranking = self.df[self.df.Date == self.unique_dates[date_index - 1]].reset_index(drop=True)
+            data_to_be_ranked = self.df[self.df.Date == self.unique_dates[date_index]].reset_index(drop=True)
             if date_index == 0:
                 voting_matrix = np.array([[0] * self.n] * self.n)  
             else:
@@ -203,8 +203,8 @@ class Markov(Ranking):
 class Massey(Ranking):
     def rank(self):
         for date_index in range(len(self.unique_dates)):
-            data_used_for_ranking = self.df[self.df.Date == self.unique_dates[date_index - 1]].reset_index(drop = True)
-            data_to_be_ranked = self.df[self.df.Date == self.unique_dates[date_index]].reset_index(drop = True)
+            data_used_for_ranking = self.df[self.df.Date == self.unique_dates[date_index - 1]].reset_index(drop=True)
+            data_to_be_ranked = self.df[self.df.Date == self.unique_dates[date_index]].reset_index(drop=True)
             if date_index == 0:
                 points_for_array = np.array([0] * self.n)
                 points_against_array = np.array([0] * self.n)
@@ -252,8 +252,8 @@ class Massey(Ranking):
 class OffensiveDefensive(Ranking):
     def rank(self):
         for date_index in range(len(self.unique_dates)):
-            data_used_for_ranking = self.df[self.df.Date == self.unique_dates[date_index - 1]].reset_index(drop = True)
-            data_to_be_ranked = self.df[self.df.Date == self.unique_dates[date_index]].reset_index(drop = True)
+            data_used_for_ranking = self.df[self.df.Date == self.unique_dates[date_index - 1]].reset_index(drop=True)
+            data_to_be_ranked = self.df[self.df.Date == self.unique_dates[date_index]].reset_index(drop=True)
             if date_index == 0:    
                 voting_matrix = np.array([[0] * self.n] * self.n)
             else:
@@ -290,8 +290,8 @@ class OffensiveDefensive(Ranking):
 class WinPercentage(Ranking):
     def rank(self):
         for date_index in range(len(self.unique_dates)):
-            data_used_for_ranking = self.df[self.df.Date == self.unique_dates[date_index - 1]].reset_index(drop = True)
-            data_to_be_ranked = self.df[self.df.Date == self.unique_dates[date_index]].reset_index(drop = True)
+            data_used_for_ranking = self.df[self.df.Date == self.unique_dates[date_index - 1]].reset_index(drop=True)
+            data_to_be_ranked = self.df[self.df.Date == self.unique_dates[date_index]].reset_index(drop=True)
             if date_index == 0:
                 total_no_won_array = np.array([[0] * self.n] * self.n)
                 total_no_played_array = np.array([[0] * self.n] * self.n)
@@ -318,12 +318,12 @@ class SeasonRanks:
     def __init__(self, df):
         self.df = df
         self.seasons = df.Season.unique()
-        self.final_df = []
 
     def do_1_seasonal_ranking(self):
+        final_df = []
         for season in self.seasons:
             season_data = self.df[self.df.Season == season]
-            self.final_df.append(
+            final_df.append(
                 WinPercentage(
                     OffensiveDefensive(
                         Massey(
@@ -338,15 +338,20 @@ class SeasonRanks:
                     ).rank()
                 ).rank()
             )
-        return pd.concat(self.final_df, ignore_index=True)
+        print(len(final_df))
+        return pd.concat(final_df, ignore_index=True)
     
     def do_2_seasonal_ranking(self):
-        self.df["Year"] = self.df.Season.str[:4].astype(int)
-        for year in self.df.Year.unique():
+        df = self.df.copy()
+        final_df = []
+        df["Year"] = df.Season.str[:4].astype(int)
+        data_length = []
+        for year in df.Year.unique():
             previous_year = year - 1
-            season_data = self.df[self.df.Year.isin([year])]
-            two_season_data = self.df[self.df.Year.isin([previous_year, year])]
-            self.final_df.append(
+            season_data = df[df.Year.isin([year])]
+            two_season_data = df[df.Year.isin([previous_year, year])].drop("Year", axis=1)
+            data_length.append(len(season_data))
+            final_df.append(
                 WinPercentage(
                     OffensiveDefensive(
                         Massey(
@@ -361,7 +366,11 @@ class SeasonRanks:
                     ).rank()
                 ).rank()
             )
-        return pd.concat(self.final_df, ignore_index=True).tail(len(season_data))
+        final_df = [final_df[i].tail(data_length[i]) for i in range(len(data_length))]
+        return pd.concat(final_df, ignore_index=True).reset_index(drop=True)
     
-    #def do_seasonal_ranking(self):
+    def do_seasonal_ranking(self):
+        one_season = self.do_1_seasonal_ranking()
+        two_season = self.do_2_seasonal_ranking()
 
+        return pd.merge(one_season, two_season, on=self.df.columns.to_list(), how="inner", suffixes=("_1", "_2"))

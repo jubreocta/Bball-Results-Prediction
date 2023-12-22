@@ -12,5 +12,4 @@ if __name__ == "__main__":
     o = SeasonRanks(rawdata)
     final_destination = "Data/FinalData"
     # Step 3 (README)
-    #w.write_csv_to_folder(o.do_seasonal_ranking(), final_destination)
-    o.do_2_seasonal_ranking()
+    w.write_csv_to_folder(o.do_seasonal_ranking(), final_destination)
