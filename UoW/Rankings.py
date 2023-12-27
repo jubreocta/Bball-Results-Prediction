@@ -314,6 +314,73 @@ class WinPercentage(Ranking):
         self.df = self.df.assign(Right_WP = self.right_rating)
         return self.df
 
+class Fatigue:
+    def __init__(self, df):
+        self.df = df
+        self.seasons = df.Season.unique()
+
+    def ewma(self, days):
+        dataset["Overtime"] = dataset["Overtime"].fillna("0")
+        dataset["Overtime"] = dataset["Overtime"].replace({"OT":"1OT"})
+        load_dict = dict()
+        lambda_ = 2 / (days + 1)
+        maxdate, mindate = max(dataset["Date"]), min(dataset["Date"])
+        calendar = pd.date_range(start=mindate, end=maxdate)
+        teams = sorted(set(dataset["LeftTeam"]).union(set(dataset["RightTeam"])))
+        for team in teams:
+            all_team_data = []
+            for date_index in range(len(calendar)):
+                row = []
+                row.append(calendar[date_index])
+                dates_data = dataset[dataset.Date == calendar[date_index]]
+                dates_data.reset_index(inplace = True)
+                if len(dates_data) == 0:
+                    loading = 0
+                else:
+                    for index in range(len(dates_data)):
+                        if dates_data.loc[index, "LeftTeam"] == team or dates_data.loc[index, "RightTeam"] == team:
+                            if "OT" in dates_data.loc[index, "Overtime"]:
+                                loading = 48 + int(dates_data.loc[index, "Overtime"][0]) * 5
+                            else:
+                                loading = 48                        
+                            break
+                        else:
+                            loading = 0
+                row.append(loading)
+                all_team_data.append(row)
+            load_dataset = pd.DataFrame.from_records(data = all_team_data,columns = ["Date","Load"])
+            ewma = []
+            ewma_yesterday = 0
+            for index in range(len(load_dataset)):
+                ewma_today = load_dataset.loc[index, "Load"] * lambda_ + ((1 - lambda_) * ewma_yesterday)
+                ewma.append(ewma_today)
+                ewma_yesterday = ewma_today
+            load_dataset["ewma"+ str(days)] = ewma
+            load_dict[team] = load_dataset
+        return load_dict
+
+    def return_ewma_column(self, dataset, days):
+        load_dict = self.ewma(dataset, days) #calls the other function to get a dictionary
+        home_load   = []
+        away_load   = []
+        for index in range(len(dataset)):
+            #ifetch datasets from the dictionary
+            home_team_load_dataset = load_dict[dataset.loc[index, 'Home Team']]
+            away_team_load_dataset = load_dict[dataset.loc[index, 'Away Team']]
+            date      = dataset.loc[index, 'Date']
+            
+            try:
+                h_load = home_team_load_dataset.loc[home_team_load_dataset['Date'] == date - pd.DateOffset(1), 'ewma'+str(days)].iloc[0]        
+                a_load = away_team_load_dataset.loc[away_team_load_dataset['Date'] == date - pd.DateOffset(1), 'ewma'+str(days)].iloc[0]        
+                home_load.append(h_load)
+                away_load.append(a_load)
+            except:
+                home_load.append(0)
+                away_load.append(0)            
+        dataset['home_ewma' + str(days)] = home_load
+        dataset['away_ewma' + str(days)] = away_load
+        return dataset
+
 class SeasonRanks:
     def __init__(self, df):
         self.df = df
