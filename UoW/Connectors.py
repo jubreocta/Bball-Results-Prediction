@@ -25,7 +25,7 @@ class Wrangler:
     def transform_br_data(self, data):
         data["Date"] = data["Date"]+ " " + data["Start (ET)"] + "M"
         data["Date"] = data["Date"].map(lambda x: datetime.datetime.strptime(x, "%a %b %d %Y %H:%M%p").strftime("%d/%m/%Y %H:%M"))
-        data["overtime"] = data["Unnamed: 7"]
+        data["Overtime"] = data["Unnamed: 7"]
         data[["Date","Time"]] = data["Date"].str.split(" ",expand=True,)
         try:
             data[["LeftScore","RightScore"]] = data.Result.str.split(" - ",expand=True,)
@@ -36,6 +36,7 @@ class Wrangler:
         data["Date"]       = pd.to_datetime(data["Date"], format = "%d/%m/%Y")
         data["LeftScore"]  = pd.to_numeric(data["PTS.1"])
         data["RightScore"] = pd.to_numeric(data["PTS"])
+        data["Overtime"] = data["Overtime"].fillna("0OT").replace({"OT":"1OT"})
         data.reset_index(inplace = True, drop = True)
         data = data[[
             "Season",
@@ -43,6 +44,7 @@ class Wrangler:
             "LeftTeam",
             "LeftScore",
             "RightScore",
-            "RightTeam"
+            "RightTeam",
+            "Overtime"
         ]]
         return data

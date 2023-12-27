@@ -320,8 +320,6 @@ class Fatigue:
         self.seasons = df.Season.unique()
 
     def ewma(self, days):
-        dataset["Overtime"] = dataset["Overtime"].fillna("0")
-        dataset["Overtime"] = dataset["Overtime"].replace({"OT":"1OT"})
         load_dict = dict()
         lambda_ = 2 / (days + 1)
         maxdate, mindate = max(dataset["Date"]), min(dataset["Date"])
