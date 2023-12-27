@@ -17,8 +17,7 @@ Steps
 2.  A load connector pulls the data from 'raw',transform the data into the formnat specified below and places a compiled 'RawData.csv' file in the Data folder.
 
 Format is columns:
-    'Season', 'Date', 'LeftTeam', 'LeftScore', 'RightScore', 'RightTeam'
-in that specific order.
+    'Season', 'Date', 'LeftTeam', 'LeftScore', 'RightScore', 'RightTeam', 'Overtime' in that specific order.
 All basketball data needs to be in this format to progress using the functions.
 
 3.  Ranking algorithms act on RawData.csv to produce features to be used in predictions. The features generated are added to our data set and saved as another file FinalData.csv.
