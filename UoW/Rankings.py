@@ -315,21 +315,19 @@ class WinPercentage(Ranking):
         return self.df
 
 class Fatigue:
-    def __init__(self, df, days):
+    def __init__(self, df):
         self.df = df
-        self.days = days
-        self.lambda_ = 2 / (days + 1)
         self.calendar = pd.date_range(start=min(self.df.Date), end=max(self.df.Date))
         self.teams = sorted(set(self.df.LeftTeam).union(set(self.df.RightTeam)))
     
-    def EWMA(self):
+    def EWMA(self, lambda_):
         load_dict = dict()
         for team in self.teams:
             all_team_data = []
             for date_index in range(len(self.calendar)):
                 row = []
                 row.append(self.calendar[date_index])
-                data_for_date = self.df[self.df.Date == self.calendar[date_index]].reset_index(inplace = True)
+                data_for_date = self.df[self.df.Date == self.calendar[date_index]].reset_index(drop=True)
                 if len(data_for_date) == 0:
                     loading = 0
                 else:
@@ -345,32 +343,55 @@ class Fatigue:
             ewma = []
             ewma_yesterday = 0
             for index in range(len(load_dataset)):
-                ewma_today = load_dataset.loc[index, "Load"] * self.lambda_ + ((1 - self.lambda_) * ewma_yesterday)
+                ewma_today = load_dataset.loc[index, "Load"] * lambda_ + ((1 - lambda_) * ewma_yesterday)
                 ewma.append(ewma_today)
                 ewma_yesterday = ewma_today
-            load_dataset["ewma" + str(self.days)] = ewma
+            load_dataset["ewma"] = ewma
             load_dict[team] = load_dataset
         return load_dict
 
-    def ReturnEWMA(self):
+    def ReturnEWMA(self, days):
+        lambda_ = 2 / (days + 1)
         left_load = []
         right_load = []
         for index in range(len(self.df)):
-            left_team_load_dataset = self.EWMA()[self.df.loc[index, 'LeftTeam']]
-            right_team_load_dataset = self.EWMA()[self.df.loc[index, 'RightTeam']]
-            date = self.df.loc[index, 'Date']
+            left_team_load_dataset = self.EWMA(lambda_)[self.df.loc[index, "LeftTeam"]]
+            right_team_load_dataset = self.EWMA(lambda_)[self.df.loc[index, "RightTeam"]]
+            date = self.df.loc[index, "Date"]
             try:
-                h_load = left_team_load_dataset.loc[left_team_load_dataset['Date'] == date - pd.DateOffset(1), 'ewma'+str(self.days)].iloc[0]        
-                a_load = right_team_load_dataset.loc[right_team_load_dataset['Date'] == date - pd.DateOffset(1), 'ewma'+str(self.days)].iloc[0]        
+                h_load = left_team_load_dataset.loc[left_team_load_dataset["Date"] == date - pd.DateOffset(1), "ewma"].iloc[0]        
+                a_load = right_team_load_dataset.loc[right_team_load_dataset["Date"] == date - pd.DateOffset(1), "ewma"].iloc[0]        
                 left_load.append(h_load)
                 right_load.append(a_load)
             except:
                 left_load.append(0)
                 right_load.append(0)            
-        self.df['Left_EWMA_' + str(self.days)] = left_load
-        self.df['Right_EWMA_' + str(self.days)] = right_load
+        self.df[f"Left_EWMA_{days}"] = left_load
+        self.df[f"Right_EWMA_{days}"] = right_load
         return self.df
 
+    def Back2Back(self):
+        left_info = []
+        right_info = []
+        for index in range(len(self.df)):
+            date = self.df.loc[index, "Date"]
+            left_team = self.df.loc[index, "LeftTeam"]
+            right_team = self.df.loc[index, "RightTeam"]
+            yday = date - pd.DateOffset(1)
+            yday_data = self.df.where(self.df.Date == yday)
+            yday_teams = set(yday_data["LeftTeam"]).union(set(yday_data["RightTeam"]))
+            if left_team in yday_teams:
+                left_info.append(1)
+            else:
+                left_info.append(0)
+            if right_team in yday_teams:
+                right_info.append(1)
+            else:
+                right_info.append(0)
+        self.df = self.df.assign(Left_B2B = left_info)
+        self.df = self.df.assign(Right_B2B = right_info)
+        return self.df
+    
 class SeasonRanks:
     def __init__(self, df):
         self.df = df
@@ -426,8 +447,17 @@ class SeasonRanks:
         final_df = [final_df[i].tail(data_length[i]) for i in range(len(data_length))]
         return pd.concat(final_df, ignore_index=True).reset_index(drop=True)
     
+    def do_fatigue(self):
+            Fatigue(
+                Fatigue(
+                    Fatigue(self.df).Back2Back()
+                ).ReturnEWMA(7)
+            ).ReturnEWMA(28)
+                    
     def do_seasonal_ranking(self):
-        one_season = self.do_1_seasonal_ranking()
-        two_season = self.do_2_seasonal_ranking()
-
+        self.df["Date"] = pd.to_datetime(self.df["Date"], format = "%Y/%m/%d")
+        #one_season = self.do_1_seasonal_ranking()
+        #two_season = self.do_2_seasonal_ranking()
+        fatigue    = self.do_fatigue()
+        return fatigue
         return pd.merge(one_season, two_season, on=self.df.columns.to_list(), how="inner", suffixes=("_1", "_2"))
