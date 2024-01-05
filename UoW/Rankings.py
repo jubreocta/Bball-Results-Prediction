@@ -348,17 +348,6 @@ class Fatigue:
                 ewma_yesterday = ewma_today
             load_dataset["ewma"] = ewma
             load_dict[team] = load_dataset
-        print(type(load_dict))
-        import json
-        class JSONEncoder(json.JSONEncoder):
-            def default(self, obj):
-                if hasattr(obj, 'to_json'):
-                    return obj.to_json(orient='records')
-                return json.JSONEncoder.default(self, obj)
-            
-        with open('result.json', 'w') as fp:
-            json.dump(load_dict, fp, cls=JSONEncoder, indent=4)
-        exit()
         return load_dict
 
     def ReturnEWMA(self, days):
