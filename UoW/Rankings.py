@@ -348,15 +348,27 @@ class Fatigue:
                 ewma_yesterday = ewma_today
             load_dataset["ewma"] = ewma
             load_dict[team] = load_dataset
+        print(type(load_dict))
+        import json
+        class JSONEncoder(json.JSONEncoder):
+            def default(self, obj):
+                if hasattr(obj, 'to_json'):
+                    return obj.to_json(orient='records')
+                return json.JSONEncoder.default(self, obj)
+            
+        with open('result.json', 'w') as fp:
+            json.dump(load_dict, fp, cls=JSONEncoder, indent=4)
+        exit()
         return load_dict
 
     def ReturnEWMA(self, days):
         lambda_ = 2 / (days + 1)
         left_load = []
         right_load = []
+        EWMA = self.EWMA(lambda_)
         for index in range(len(self.df)):
-            left_team_load_dataset = self.EWMA(lambda_)[self.df.loc[index, "LeftTeam"]]
-            right_team_load_dataset = self.EWMA(lambda_)[self.df.loc[index, "RightTeam"]]
+            left_team_load_dataset = EWMA[self.df.loc[index, "LeftTeam"]]
+            right_team_load_dataset = EWMA[self.df.loc[index, "RightTeam"]]
             date = self.df.loc[index, "Date"]
             try:
                 h_load = left_team_load_dataset.loc[left_team_load_dataset["Date"] == date - pd.DateOffset(1), "ewma"].iloc[0]        
@@ -448,16 +460,17 @@ class SeasonRanks:
         return pd.concat(final_df, ignore_index=True).reset_index(drop=True)
     
     def do_fatigue(self):
-            Fatigue(
-                Fatigue(
-                    Fatigue(self.df).Back2Back()
-                ).ReturnEWMA(7)
-            ).ReturnEWMA(28)
+        return Fatigue(
+                    Fatigue(
+                        Fatigue(self.df).Back2Back()
+                    ).ReturnEWMA(7)
+                ).ReturnEWMA(28)
                     
     def do_seasonal_ranking(self):
         self.df["Date"] = pd.to_datetime(self.df["Date"], format = "%Y/%m/%d")
         #one_season = self.do_1_seasonal_ranking()
         #two_season = self.do_2_seasonal_ranking()
         fatigue    = self.do_fatigue()
+        print(fatigue)
         return fatigue
         return pd.merge(one_season, two_season, on=self.df.columns.to_list(), how="inner", suffixes=("_1", "_2"))
