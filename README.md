@@ -21,3 +21,31 @@ Format is columns:
 All basketball data needs to be in this format to progress using the functions.
 
 3.  Ranking algorithms act on RawData.csv to produce features to be used in predictions. The features generated are added to our data set and saved as another file FinalData.csv.
+
+Features are:
+    'Left_C_1', 'Right_C_1',
+    'Left_MV1_1', 'Right_MV1_1',
+    'Left_MV2_1', 'Right_MV2_1',
+    'Left_MV3_1', 'Right_MV3_1', 
+    'Left_MO_1', 'Right_MO_1',
+    'Left_MD_1', 'Right_MD_1',
+    'Left_M_1', 'Right_M_1',
+    'Left_ODO_1', 'Right_ODO_1',
+    'Left_ODD_1', 'Right_ODD_1',
+    'Left_OD_1', 'Right_OD_1',
+    'Left_WP_1', 'Right_WP_1',
+    'Left_C_2', 'Right_C_2',
+    'Left_MV1_2', 'Right_MV1_2',
+    'Left_MV2_2', 'Right_MV2_2',
+    'Left_MV3_2', 'Right_MV3_2',
+    'Left_MO_2', 'Right_MO_2',
+    'Left_MD_2', 'Right_MD_2',
+    'Left_M_2', 'Right_M_2',
+    'Left_ODO_2', 'Right_ODO_2',
+    'Left_ODD_2', 'Right_ODD_2',
+    'Left_OD_2', 'Right_OD_2',
+    'Left_WP_2', 'Right_WP_2',
+    'Left_B2B', 'Right_B2B',
+    'Left_EWMA_7', 'Right_EWMA_7',
+    'Left_EWMA_28', 'Right_EWMA_28'
+50 total
