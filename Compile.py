@@ -1,5 +1,6 @@
 from UoW.Connectors import Wrangler
 from UoW.Rankings import SeasonRanks
+from UoW.Evaluate import Model
 
 if __name__ == "__main__":
     w = Wrangler()
@@ -15,5 +16,5 @@ if __name__ == "__main__":
 
     #
     features = w.read_csv_from_folder(final_destination)
-    features = features.iloc[:, -50:]
-    print(len(features.columns))
+    m = Model(features)
+    m.features_model()
