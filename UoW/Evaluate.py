@@ -38,6 +38,4 @@ class Model:
             test_data = self.df[self.df.Season == test_season].index.values.astype(int)
             train_data = self.df[self.df.Season.isin(train_seasons)].index.values.astype(int)
             result.append((train_data, test_data))
-            print(season_index)
-            print(len(train_data), len(test_data))
         return result
