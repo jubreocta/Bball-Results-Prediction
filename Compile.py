@@ -17,4 +17,4 @@ if __name__ == "__main__":
     #
     features = w.read_csv_from_folder(final_destination)
     m = Model(features)
-    m.features_model()
+    m.MyCV()
