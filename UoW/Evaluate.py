@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import MinMaxScaler
@@ -46,37 +47,76 @@ class Model:
         test = self.df[self.df.Season.isin(["2018-2019", "2019-2020"])].index.values.astype(int)
         return train, test
     
-    def lstm_model(self):
+    def lookback_array(self, X, lookback):
+        result = []
+        for ind in range(len(X)):
+            if ind < lookback - 1:
+                zeros_array = np.zeros((lookback - ind - 1, len(X[0])))
+                entry = np.concatenate((zeros_array, X[0: ind + 1]), axis=0)
+            else:
+                entry = X[max(0, ind - lookback + 1): ind + 1]
+            print(entry.shape)
+            print(entry)
+            print(X[ind])
+            #print(np.concatenate((zeros_array, X[ind]), axis=0))
+            input()
+        print([len(i) for i in result])
+        exit()
+        return np.array(result)
+
+    def lstm_model(self, lookback):
+        from tensorflow.keras.callbacks import EarlyStopping
+        from tensorflow.keras.layers import Bidirectional, BatchNormalization, Dense, Dropout, LSTM 
         from tensorflow.keras.models import Sequential
-        from tensorflow.keras.layers import Dense, LSTM, Dropout
+        from tensorflow.keras.optimizers import Adam
+        from tensorflow.keras.regularizers import l2
         train_index, test_index = self.train_test_split()
         X_train = self.features()[self.features().index.isin(train_index)].values
-        y_train = self.y[self.y.index.isin(train_index)].values
-        X_test = self.features()[self.features().index.isin(test_index)].values
-        y_test = self.y[self.y.index.isin(test_index)].values
+        X_train = self.lookback_array(X_train, lookback)
         X_train = X_train.reshape((X_train.shape[0], 1, X_train.shape[1]))
+        
+        y_train = self.y[self.y.index.isin(train_index)].values
+        
+        X_test = self.features()[self.features().index.isin(test_index)].values
+        X_test = self.lookback_array(X_test, lookback)
         X_test = X_test.reshape((X_test.shape[0], 1, X_test.shape[1]))
+
+        y_test = self.y[self.y.index.isin(test_index)].values
+
         model = Sequential()
-        model.add(LSTM(64, return_sequences=True, input_shape=(X_train.shape[1], X_train.shape[2]),  activation="relu"))
-        model.add(Dropout(0.2))
-        model.add(LSTM(32, return_sequences=True,  activation="relu"))
-        model.add(LSTM(16, return_sequences=True,  activation="relu"))
-        model.add(Dropout(0.2))
-        model.add(LSTM(8, return_sequences=True,  activation="relu"))
-        model.add(LSTM(4, return_sequences=True,  activation="relu"))
-        model.add(LSTM(2,  activation="relu"))
-        model.add(Dense(1))
+        model.add(Bidirectional(LSTM(64, return_sequences=True, activation="relu"), input_shape=(X_train.shape[1], X_train.shape[2])))
+        model.add(Dropout(0.5))
+        model.add(BatchNormalization())
+
+        model.add(Bidirectional(LSTM(32, return_sequences=True, activation="relu")))
+        model.add(Dropout(0.5))
+        model.add(BatchNormalization())
+
+        model.add(Bidirectional(LSTM(16, activation="relu")))
+        model.add(Dropout(0.5))
+        model.add(BatchNormalization())
+
+        model.add(Dense(64, activation="relu"))
+        model.add(Dropout(0.5))
+        model.add(BatchNormalization())
+
+        model.add(Dense(1, activation="sigmoid"))
+
         model.compile(
             loss="binary_crossentropy",
-            optimizer="adam",
-            metrics=["accuracy"]
+            optimizer=Adam(lr=0.001),
+            metrics=["binary_accuracy"]
         )
+        early_stopping = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
+
         model.fit(
-            X_train, y_train,
-            batch_size=500, epochs=200,
-            verbose=1, shuffle=False
+            X_train, y_train.reshape(-1, 1),
+            validation_data=(X_test, y_test.reshape(-1, 1)),
+            batch_size=64, epochs=100,
+            verbose=1, shuffle=False,
+            callbacks=[early_stopping]
         )
-        y_pred = (model.predict(X_test) > 0.5).astype("int32")
+        y_pred = (model.predict(X_test) > 0.5).astype("int32").squeeze()
         print(self.accuracy(y_test, y_pred))
 
     def lr_model(self):

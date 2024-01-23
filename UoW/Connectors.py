@@ -1,6 +1,8 @@
-import os
-import pandas as pd
 import datetime
+import json
+import os
+import numpy as np
+import pandas as pd
 class Wrangler:
     def __init__(self):
         pass
@@ -48,3 +50,23 @@ class Wrangler:
             "Overtime"
         ]]
         return data
+    
+    def ranks_by_team_json(self, data):
+        json_file = {}
+        for ind in range(len(data)):
+            team = data.loc[ind, "LeftTeam"]
+            features = data.iloc[ind].filter(regex='Left_').fillna(0)
+            if team in json_file:
+                json_file[team] = np.vstack((json_file[team], features))
+            else:
+                json_file[team] = np.reshape(np.array(features), (1, 25))
+
+            team = data.loc[ind, "RightTeam"]
+            features = data.iloc[ind].filter(regex='Right_').fillna(0)
+            if team in json_file:
+                json_file[team] = np.vstack((json_file[team], features))
+            else:
+                json_file[team] = np.reshape(np.array(features), (1, 25))
+        j = json.dumps({k: v.tolist() for k, v in json_file.items()})
+        with open('data.json', 'w', encoding='utf-8') as f:
+            json.dump(j, f, ensure_ascii=False, indent=4)

@@ -15,6 +15,10 @@ if __name__ == "__main__":
     #w.write_csv_to_folder(o.do_seasonal_ranking(), final_destination)
 
     #
-    features = w.read_csv_from_folder(final_destination)
-    m = Model(features)
-    m.lr_model()
+    ranking_df = w.read_csv_from_folder(final_destination)
+
+    w.ranks_by_team_json(ranking_df)
+
+    #m = Model(features)
+    #m.lstm_model(5)
+    #m.lr_model()
