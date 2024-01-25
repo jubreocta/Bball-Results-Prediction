@@ -17,8 +17,8 @@ if __name__ == "__main__":
     #
     ranking_df = w.read_csv_from_folder(final_destination)
 
-    w.ranks_by_team_json(ranking_df)
+    m = Model(ranking_df)
 
-    #m = Model(features)
+    m.lookback_array(5)
     #m.lstm_model(5)
     #m.lr_model()

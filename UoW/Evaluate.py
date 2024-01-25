@@ -1,3 +1,4 @@
+import json
 import numpy as np
 import pandas as pd
 from sklearn.metrics import accuracy_score
@@ -46,8 +47,32 @@ class Model:
         train = self.df[~self.df.Season.isin(["2018-2019", "2019-2020"])].index.values.astype(int)
         test = self.df[self.df.Season.isin(["2018-2019", "2019-2020"])].index.values.astype(int)
         return train, test
+
+    def ranks_by_team_json(self, data):
+        json_file = {}
+        for ind in range(len(data)):
+            team = data.loc[ind, "LeftTeam"]
+            features = data.iloc[ind].filter(regex='Left_').fillna(0)
+            if team in json_file:
+                json_file[team] = np.vstack((json_file[team], features))
+            else:
+                json_file[team] = np.reshape(np.array(features), (1, 25))
+
+            team = data.loc[ind, "RightTeam"]
+            features = data.iloc[ind].filter(regex='Right_').fillna(0)
+            if team in json_file:
+                json_file[team] = np.vstack((json_file[team], features))
+            else:
+                json_file[team] = np.reshape(np.array(features), (1, 25))
+        j = json.dumps({k: v.tolist() for k, v in json_file.items()})
+        with open('data.json', 'w', encoding='utf-8') as f:
+            json.dump(j, f, ensure_ascii=False, indent=4)
+        return json_file
     
-    def lookback_array(self, X, lookback):
+    def lookback_array(self, lookback):
+        r = self.ranks_by_team_json(self.df)
+        exit()
+
         result = []
         for ind in range(len(X)):
             if ind < lookback - 1:
